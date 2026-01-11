@@ -125,15 +125,22 @@
                             <small>Grand Total</small>
                             <div id="grandTotal">₹0.00</div>
                         </div>
+
                         <div class="payment-input-group">
-                            <label>Cash Received (₹)</label>
-                            <input type="number" id="amountPaid" placeholder="Enter Amount..." onkeyup="calculateChange()">
+                            <label>Apply Discount</label>
+                            <div class="discount-grid">
+                                <button class="btn btn-secondary btn-sm" onclick="setDiscount(5)">5%</button>
+                                <button class="btn btn-secondary btn-sm" onclick="setDiscount(10)">10%</button>
+                                <button class="btn btn-secondary btn-sm" onclick="setDiscount(15)">15%</button>
+                                <button class="btn btn-secondary btn-sm" onclick="setDiscount(20)">20%</button>
+                                <button class="btn btn-dark btn-sm" onclick="setDiscount('custom')">Custom</button>
+                            </div>
+                            <div class="discount-display">
+                                <span>Discount:</span>
+                                <span id="discountLabel">₹0.00 (0%)</span>
+                            </div>
                         </div>
-                        <div class="return-display">
-                            <span>Change Return:</span>
-                            <span id="changeToReturn">--</span>
                         </div>
-                    </div>
 
                     <div class="checkout-actions">
                         <button class="btn btn-primary btn-block btn-lg" onclick="processSale('print')">
@@ -221,13 +228,16 @@
 
     <div id="receipt-template" class="receipt-hidden">
         <div class="r-container">
-            <div class="r-header"><h2>SAMARPAN FASHION</h2><p>Main Bazaar, Jasdan</p><p>Mo: +91 98765 43210</p></div>
+            <div class="r-header"><h2>SAMARPAN FASHION</h2><p>Chitaliya Road, Jasdan</p><p>Mo: +91 99240 49349</p></div>
             <div class="dashed-line"></div>
             <div class="r-meta"><span>Date: <b id="r-date"></b></span><span>Bill No: <b id="r-id"></b></span></div>
             <div class="r-customer"><p id="r-cust-name"></p><p id="r-cust-mobile"></p></div>
             <div class="dashed-line"></div>
             <table class="r-table"><thead><tr><th class="text-left">ITEM</th><th class="text-center">SIZE</th><th class="text-center">QTY</th><th class="text-right">PRICE</th><th class="text-right">AMT</th></tr></thead><tbody id="r-body"></tbody></table>
+            
             <div class="dashed-line"></div>
+            <div class="r-meta" style="justify-content: space-between;"><span>Sub Total:</span> <span id="r-subtotal"></span></div>
+            <div class="r-meta" style="justify-content: space-between;"><span>Discount:</span> <span id="r-discount"></span></div>
             <div class="r-total"><span>GRAND TOTAL</span><span id="r-total"></span></div>
             <div class="dashed-line"></div>
             <div class="r-footer"><p>THANK YOU VISIT AGAIN</p><p>No Exchange/Return without Bill</p><div class="barcode-container"><svg id="r-barcode"></svg></div></div>
