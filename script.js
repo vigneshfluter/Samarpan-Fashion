@@ -1,12 +1,12 @@
 /* --- CONFIGURATION --- */
 const firebaseConfig = {
-  apiKey: "AIzaSyAHPndvsewwM0GDXQyrsf_LBeUW5RrHcZk",
-  authDomain: "samarpan-pos.firebaseapp.com",
-  databaseURL: "https://samarpan-pos-default-rtdb.firebaseio.com",
-  projectId: "samarpan-pos",
-  storageBucket: "samarpan-pos.firebasestorage.app",
-  messagingSenderId: "974955463172",
-  appId: "1:974955463172:web:711317e66399b1a1bd6b51"
+  apiKey: "AIzaSyAmfEn3l83k8kwndWPWaixN-XN76eg2MXI",
+  authDomain: "samarpan-f1822.firebaseapp.com",
+  databaseURL: "https://samarpan-f1822-default-rtdb.firebaseio.com",
+  projectId: "samarpan-f1822",
+  storageBucket: "samarpan-f1822.firebasestorage.app",
+  messagingSenderId: "783942684395",
+  appId: "1:783942684395:web:0eca1364f5e016c03438ae"
 };
 
 // Initialize Firebase
@@ -18,7 +18,7 @@ let products = [];
 let salesHistory = [];
 let heldBills = [];
 let cart = [];
-let currentDiscount = 0; // NEW: Track discount percentage
+let currentDiscount = 0; // Track discount percentage
 
 const barcodeInput = document.getElementById('barcodeInput');
 const cartTableBody = document.getElementById('cartTableBody');
@@ -378,8 +378,8 @@ function processSale(type) {
         serial: serialNo, 
         date: dateStr, 
         items: cart.length, 
-        subTotal: subTotal,     // Saved
-        discount: discountAmt,  // Saved
+        subTotal: subTotal, 
+        discount: discountAmt, 
         total: finalTotal, 
         customer: cName, 
         mobile: cMobile, 
@@ -416,70 +416,20 @@ function processSale(type) {
     }, 300);
 }
 
-// === IMPROVED PRINT LABELS FUNCTION ===
-// function printLabels(id) {
-//     const p = products.find(x => x.id === id);
-//     if(!p) return;
-    
-//     document.body.classList.add('printing-labels');
-//     const sheet = document.getElementById('label-sheet');
-//     sheet.innerHTML = '';
-    
-//     // Create 24 stickers
-//     for(let i=0; i<24; i++) {
-//         const svgId = `b-${id}-${i}`;
-//         sheet.innerHTML += `
-//             <div class="sticker">
-//                 <h4>Samarpan Fashion</h4>
-//                 <svg id="${svgId}"></svg>
-//                 <p>Size: ${p.size || 'Free'} | ₹${p.price}</p>
-//                 <small>${p.name}</small>
-//             </div>`;
-//     }
-
-//     // Delay 1: Allow DOM to populate
-//     setTimeout(() => {
-//         for(let i=0; i<24; i++) {
-//             const svgElement = document.getElementById(`b-${id}-${i}`);
-//             if(svgElement) {
-//                 try {
-//                     JsBarcode(svgElement, p.barcode, { 
-//                         format: "CODE128",
-//                         height: 40,      // Matches CSS
-//                         width: 1.8,      // Good thickness
-//                         fontSize: 12,    
-//                         displayValue: true,
-//                         margin: 0
-//                     });
-//                 } catch(e) { console.error(e); }
-//             }
-//         }
-        
-//         // Delay 2: Allow SVG rendering (1 second)
-//         setTimeout(() => {
-//             window.print(); 
-//             // Cleanup: remove class after print dialog closes/interacts
-//             setTimeout(() => document.body.classList.remove('printing-labels'), 1000); 
-//         }, 1000);
-//     }, 100);
-// }
-// === UPDATED PRINT LABELS FUNCTION (Quantity Prompt + 50x25mm Support) ===
-// === UPDATED PRINT LABELS (INSTANT PRINT 1 STICKER - NO POPUP) ===
+// === UPDATED PRINT LABELS (WITH PRODUCT NAME & INSTANT PRINT) ===
 function printLabels(id) {
     const p = products.find(x => x.id === id);
     if(!p) return;
 
-    // --- CHANGE: REMOVED PROMPT, DEFAULT TO 1 ---
+    // Instant Print (Quantity 1)
     let qty = 1; 
     
     document.body.classList.add('printing-labels');
     const sheet = document.getElementById('label-sheet');
     sheet.innerHTML = '';
     
-    // Generate the single sticker
     for(let i=0; i<qty; i++) {
         const svgId = `b-${id}-${i}`;
-        // Since it's only 1, we don't need the page-break style, but keeping logic safe
         const breakStyle = (i < qty - 1) ? 'style="page-break-after: always;"' : '';
         
         sheet.innerHTML += `
@@ -487,7 +437,7 @@ function printLabels(id) {
                 <h4>Samarpan Fashion</h4>
                 <svg id="${svgId}"></svg>
                 <p>Size: ${p.size || 'Free'} | ₹${p.price}</p>
-            </div>`;
+                <small>${p.name}</small> </div>`;
     }
 
     setTimeout(() => {
@@ -497,9 +447,9 @@ function printLabels(id) {
                 try {
                     JsBarcode(svgElement, p.barcode, { 
                         format: "CODE128",
-                        width: 2.2,      // Thick Barcode
-                        height: 40,      // Tall Barcode
-                        fontSize: 14,    
+                        width: 2.0,      // Thick Barcode
+                        height: 28,      // Fits with text
+                        fontSize: 12,    
                         displayValue: true,
                         margin: 0,
                         textMargin: 0
