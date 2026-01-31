@@ -157,6 +157,7 @@
                 <h1>Inventory Management</h1>
                 <div class="header-tools">
                     <button class="btn btn-info" onclick="downloadSample()">Download Template</button>
+                    <button class="btn btn-success" onclick="exportInventory()"><i class="fa-solid fa-file-export"></i> Export All</button>
                     <button class="btn btn-dark" onclick="document.getElementById('importFile').click()"><i class="fa-solid fa-file-import"></i> Import CSV</button>
                     <input type="file" id="importFile" hidden onchange="importCSV(this)">
                 </div>
@@ -167,10 +168,13 @@
                     <form id="addProductForm">
                         <input type="hidden" id="editId">
                         <div class="form-group"><label>Product Name</label><input type="text" id="prodName" required placeholder="Enter Item Name"></div>
-                        <div class="grid-2">
+                        
+                        <div class="grid-3">
                             <div class="form-group"><label>Size</label><input type="text" id="prodSize" placeholder="e.g. M, XL, 40"></div>
                             <div class="form-group"><label>Price (₹)</label><input type="number" id="prodPrice" required placeholder="0.00"></div>
+                            <div class="form-group"><label>Stock</label><input type="number" id="prodStock" required placeholder="100"></div>
                         </div>
+
                         <div class="form-group">
                             <label>Barcode</label>
                             <div class="input-group">

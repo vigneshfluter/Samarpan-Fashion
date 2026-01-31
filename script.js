@@ -120,7 +120,8 @@ if(addForm) {
         const name = document.getElementById('prodName').value;
         const size = document.getElementById('prodSize').value;
         const price = parseFloat(document.getElementById('prodPrice').value);
-        const stock = 100;
+        const stock = parseInt(document.getElementById('prodStock').value) || 0;
+        
         let barcode = document.getElementById('prodBarcode').value;
         if(!barcode) barcode = generateUniqueBarcode();
         if(id) {
@@ -138,6 +139,7 @@ if(addForm) {
 function resetForm() {
     document.getElementById('addProductForm').reset();
     document.getElementById('editId').value = '';
+    document.getElementById('prodStock').value = ''; 
     document.getElementById('formTitle').innerText = 'Add New Item';
     document.getElementById('saveBtn').innerText = 'Save Product';
     document.getElementById('saveBtn').classList.replace('btn-warning', 'btn-success');
@@ -151,6 +153,7 @@ function editProduct(id) {
     document.getElementById('prodName').value = p.name;
     document.getElementById('prodSize').value = p.size || '';
     document.getElementById('prodPrice').value = p.price;
+    document.getElementById('prodStock').value = p.stock || 0; 
     document.getElementById('prodBarcode').value = p.barcode;
     document.getElementById('formTitle').innerText = 'Edit Item';
     const btn = document.getElementById('saveBtn');
@@ -164,7 +167,13 @@ function renderInventory() {
     if(!tbody) return;
     tbody.innerHTML = '';
     const term = document.getElementById('inventorySearch').value.toLowerCase();
-    const filtered = products.filter(p => p.name.toLowerCase().includes(term) || p.barcode.includes(term) || (p.size && p.size.toLowerCase().includes(term)));
+    
+    // === FIX: REVERSE THE LIST TO SHOW NEWEST FIRST ===
+    // We create a copy using [...products] and then reverse it
+    const reversedProducts = [...products].reverse();
+
+    const filtered = reversedProducts.filter(p => p.name.toLowerCase().includes(term) || p.barcode.includes(term) || (p.size && p.size.toLowerCase().includes(term)));
+    
     filtered.forEach(p => {
         tbody.innerHTML += `
             <tr style="${p.stock < 5 ? 'background:#fee2e2' : ''}">
@@ -248,32 +257,12 @@ function setDiscount(val) {
 }
 
 function calculateTotals() {
-    // 1. Calculate Subtotal
     const subTotal = cart.reduce((acc, i) => acc + (i.price * i.qty), 0);
-    
-    // 2. Calculate Discount
     const discountAmt = subTotal * (currentDiscount / 100);
-    
-    // 3. Final Total
     const finalTotal = subTotal - discountAmt;
-
-    // 4. Update UI
     document.getElementById('grandTotal').innerText = `₹${finalTotal.toFixed(2)}`;
-    
     const discLabel = document.getElementById('discountLabel');
     if(discLabel) discLabel.innerText = `₹${discountAmt.toFixed(2)} (${currentDiscount}%)`;
-    
-    // 5. Check change (if cash entered)
-    calculateChange();
-}
-
-function calculateChange() {
-    // This is removed visually in the HTML per your request, 
-    // but function is kept to avoid errors if referenced elsewhere
-    const paid = parseFloat(document.getElementById('amountPaid')?.value) || 0;
-    const totalText = document.getElementById('grandTotal').innerText.replace('₹', '');
-    const total = parseFloat(totalText);
-    // Logic remains in case you re-enable cash inputs
 }
 
 /* --- BILL FUNCTIONS --- */
@@ -281,8 +270,6 @@ function holdBill() {
     if(cart.length === 0) { alert("Cart is empty!"); return; }
     const custName = document.getElementById('custName').value || 'Guest';
     const total = parseFloat(document.getElementById('grandTotal').innerText.replace('₹', ''));
-    
-    // We also save subTotal/Discount in held bill just in case
     const subTotal = cart.reduce((acc, i) => acc + (i.price * i.qty), 0);
     const discountAmt = subTotal * (currentDiscount / 100);
 
@@ -292,12 +279,11 @@ function holdBill() {
         customer: custName,
         total: total,
         cartData: [...cart],
-        discountPct: currentDiscount, // Save discount state
+        discountPct: currentDiscount, 
         custData: { name: document.getElementById('custName').value, mobile: document.getElementById('custMobile').value }
     });
     saveHeldBills(); 
     clearCart();
-    // Reset Discount
     currentDiscount = 0;
     calculateTotals();
     
@@ -340,13 +326,13 @@ function restoreBill(index) {
     if(cart.length > 0) { if(!confirm("Current cart will be cleared. Continue?")) return; }
     const bill = heldBills[index];
     cart = bill.cartData;
-    currentDiscount = bill.discountPct || 0; // Restore discount
+    currentDiscount = bill.discountPct || 0; 
     
     document.getElementById('custName').value = bill.custData.name;
     document.getElementById('custMobile').value = bill.custData.mobile;
     heldBills.splice(index, 1);
     saveHeldBills();
-    renderCart(); // This calls calculateTotals which uses currentDiscount
+    renderCart(); 
     closeHeldModal();
 }
 function deleteHeldBill(index) {
@@ -358,8 +344,6 @@ function deleteHeldBill(index) {
 
 function processSale(type) {
     if(cart.length === 0) { alert('Cart is Empty!'); return; }
-    
-    // Recalculate Logic to be safe
     const subTotal = cart.reduce((acc, i) => acc + (i.price * i.qty), 0);
     const discountAmt = subTotal * (currentDiscount / 100);
     const finalTotal = subTotal - discountAmt;
@@ -372,7 +356,6 @@ function processSale(type) {
     const cName = document.getElementById('custName').value || 'Guest';
     const cMobile = document.getElementById('custMobile').value || '';
     
-    // Save to History
     salesHistory.unshift({ 
         id: uniqueId, 
         serial: serialNo, 
@@ -387,7 +370,6 @@ function processSale(type) {
     });
     saveSales();
     
-    // Receipt Data Filling
     document.getElementById('r-id').innerText = `SR No. ${serialNo}`;
     document.getElementById('r-date').innerText = dateStr;
     document.getElementById('r-cust-name').innerText = cName ? `Customer: ${cName}` : '';
@@ -399,7 +381,6 @@ function processSale(type) {
         body.innerHTML += `<tr><td class="text-left">${i.name}</td><td class="text-center">${i.size || ''}</td><td class="text-center">${i.qty}</td><td class="text-right">${i.price}</td><td class="text-right">${(i.price*i.qty).toFixed(2)}</td></tr>`;
     });
     
-    // UPDATED RECEIPT TOTALS
     if(document.getElementById('r-subtotal')) document.getElementById('r-subtotal').innerText = '₹' + subTotal.toFixed(2);
     if(document.getElementById('r-discount')) document.getElementById('r-discount').innerText = '₹' + discountAmt.toFixed(2);
     document.getElementById('r-total').innerText = '₹' + finalTotal.toFixed(2);
@@ -409,21 +390,18 @@ function processSale(type) {
     setTimeout(() => {
         window.print();
         clearCart();
-        currentDiscount = 0; // Reset Discount
+        currentDiscount = 0; 
         calculateTotals();
         document.getElementById('custName').value = '';
         document.getElementById('custMobile').value = '';
     }, 300);
 }
 
-// === UPDATED PRINT LABELS (WITH PRODUCT NAME & INSTANT PRINT) ===
 function printLabels(id) {
     const p = products.find(x => x.id === id);
     if(!p) return;
 
-    // Instant Print (Quantity 1)
     let qty = 1; 
-    
     document.body.classList.add('printing-labels');
     const sheet = document.getElementById('label-sheet');
     sheet.innerHTML = '';
@@ -431,7 +409,6 @@ function printLabels(id) {
     for(let i=0; i<qty; i++) {
         const svgId = `b-${id}-${i}`;
         const breakStyle = (i < qty - 1) ? 'style="page-break-after: always;"' : '';
-        
         sheet.innerHTML += `
             <div class="sticker" ${breakStyle}>
                 <h4>Samarpan Fashion</h4>
@@ -447,8 +424,8 @@ function printLabels(id) {
                 try {
                     JsBarcode(svgElement, p.barcode, { 
                         format: "CODE128",
-                        width: 2.0,      // Thick Barcode
-                        height: 28,      // Fits with text
+                        width: 2.0,      
+                        height: 28,      
                         fontSize: 12,    
                         displayValue: true,
                         margin: 0,
@@ -457,7 +434,6 @@ function printLabels(id) {
                 } catch(e) { console.error(e); }
             }
         }
-        
         setTimeout(() => {
             window.print(); 
             setTimeout(() => document.body.classList.remove('printing-labels'), 1000); 
@@ -493,10 +469,8 @@ function reprintBill(index) {
     body.innerHTML = '';
     bill.details.forEach(i => { body.innerHTML += `<tr><td class="text-left">${i.name}</td><td class="text-center">${i.size || ''}</td><td class="text-center">${i.qty}</td><td class="text-right">${i.price}</td><td class="text-right">${(i.price*i.qty).toFixed(2)}</td></tr>`; });
     
-    // UPDATED FOR REPRINT
     const rSub = document.getElementById('r-subtotal');
     const rDisc = document.getElementById('r-discount');
-    
     if(rSub) rSub.innerText = '₹' + (bill.subTotal || bill.total).toFixed(2);
     if(rDisc) rDisc.innerText = '₹' + (bill.discount || 0).toFixed(2);
     document.getElementById('r-total').innerText = '₹' + bill.total.toFixed(2);
@@ -517,20 +491,13 @@ function restoreData(input) {
     r.readAsText(input.files[0]); 
 }
 function downloadSample() {
-    // 1. Define the CSV Content
-    const csvContent = "Product Name,Size,Price,Barcode\nSample Shirt,L,599,";
-    
-    // 2. Create a Blob
+    const csvContent = "Product Name,Size,Price,Stock,Barcode\nSample Shirt,L,599,100,";
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    
-    // 3. Create a temporary link to trigger download
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
     link.setAttribute("href", url);
     link.setAttribute("download", "inventory_template.csv");
     link.style.visibility = 'hidden';
-    
-    // 4. Append, Click, Remove
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -549,11 +516,13 @@ function importCSV(input) {
                 const name = cols[0].trim();
                 const size = cols[1].trim();
                 const price = parseFloat(cols[2]);
+                const stock = parseInt(cols[3]) || 0; 
+                
                 const isDuplicate = products.some(p => p.name.toLowerCase() === name.toLowerCase() && p.price === price);
                 if (!isDuplicate && name && !isNaN(price)) {
-                    let barcode = cols[3] ? cols[3].trim() : '';
+                    let barcode = cols[4] ? cols[4].trim() : '';
                     if(!barcode || products.some(p => p.barcode === barcode)) barcode = generateUniqueBarcode(); 
-                    products.push({ id: Date.now() + Math.random(), name, size, price, stock: 100, barcode }); 
+                    products.push({ id: Date.now() + Math.random(), name, size, price, stock, barcode }); 
                     addedCount++;
                 }
             }
@@ -564,4 +533,52 @@ function importCSV(input) {
     };
     reader.readAsText(file);
 }
-function exportReport() { /* Export Logic */ }
+
+function exportInventory() {
+    if (!products || products.length === 0) {
+        alert("No products found to export!");
+        return;
+    }
+
+    let csvContent = "Product Name,Size,Price,Barcode,Stock\n";
+
+    products.forEach(p => {
+        let name = p.name ? `"${p.name.replace(/"/g, '""')}"` : "";
+        let size = p.size || "";
+        let price = p.price || 0;
+        let barcode = p.barcode ? `"${p.barcode}"` : ""; 
+        let stock = p.stock || 0;
+
+        csvContent += `${name},${size},${price},${barcode},${stock}\n`;
+    });
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", "Samarpan_Product_List.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+function exportReport() { 
+    if (!salesHistory || salesHistory.length === 0) {
+        alert("No sales history to export!");
+        return;
+    }
+    
+    let csvContent = "Bill ID,Date,Customer,Mobile,Items,Total\n";
+    salesHistory.forEach(s => {
+        const id = s.serial ? `SR-${s.serial}` : s.id;
+        csvContent += `${id},${s.date},${s.customer || ''},${s.mobile || ''},${s.items},${s.total}\n`;
+    });
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "Sales_Report.csv";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}

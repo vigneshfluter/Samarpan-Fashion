@@ -117,6 +117,10 @@ header { display: flex; justify-content: space-between; align-items: center; mar
 .form-group label { display: block; text-align: left; font-size: 0.85rem; font-weight: 600; margin-bottom: 5px; color: var(--secondary); }
 .form-group input { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: var(--radius); }
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+
+/* === NEW: GRID 3 FOR SIZE, PRICE, STOCK === */
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; }
+
 .input-group { display: flex; gap: 8px; }
 .full-width { width: 100%; }
 
@@ -130,7 +134,7 @@ header { display: flex; justify-content: space-between; align-items: center; mar
 .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
 .close-btn { background: none; border: none; font-size: 1.5rem; cursor: pointer; }
 
-/* === DISCOUNT SECTION STYLES (MOVED OUTSIDE PRINT MEDIA) === */
+/* === DISCOUNT SECTION STYLES === */
 .discount-grid { 
     display: grid; 
     grid-template-columns: repeat(5, 1fr); 
@@ -175,7 +179,7 @@ header { display: flex; justify-content: space-between; align-items: center; mar
     .stats-widget { margin-bottom: 15px; }
     .inventory-layout { grid-template-columns: 1fr; gap: 15px; }
     .card { width: 100%; padding: 15px; }
-    .grid-2 { grid-template-columns: 1fr; }
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
     .table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }
     .styled-table th, .styled-table td { white-space: nowrap; padding: 10px; }
     .login-card { width: 90%; padding: 25px; }
@@ -183,177 +187,109 @@ header { display: flex; justify-content: space-between; align-items: center; mar
 }
 
 .receipt-hidden, .label-hidden { display: none; }
-/* === PRINT LAYOUT (UPDATED FOR 50x25mm STICKER & RECEIPT) === */
-/* === PRINT LAYOUT (FIXED: SEPARATE STYLES FOR BILL & STICKER) === */
-/* === FINAL PRINT FIX: 1 STICKER = 1 PAGE === */
+
+/* === FINAL PRINT FIX: 3-INCH (80mm) THERMAL OPTIMIZED === */
 @media print {
-
+    
+    /* 1. GLOBAL RESET */
     @page {
-
-        size: 50mm 25mm;
-
-        margin: 0mm;
-
-    }
-
-   
-
-    html, body {
-
-        width: 50mm;
-
-        height: 25mm; /* FORCE exact height */
-
         margin: 0;
+        size: auto; /* Allow printer driver to handle paper length */
+    }
 
+    body {
+        margin: 0;
         padding: 0;
-
-        overflow: hidden; /* CUTS off any extra white space causing 7 pages */
-
-    }
-
-   
-
-    body * { visibility: hidden; }
-
-   
-
-    /* --- BARCODE STICKER STYLES --- */
-
-    body.printing-labels .receipt-hidden { display: none !important; }
-
-   
-
-    body.printing-labels .label-hidden {
-
-        visibility: visible;
-
-        position: fixed;
-
-        left: 0;
-
-        top: 0;
-
-        width: 50mm;
-
-        height: 25mm;
-
         background: white;
-
-        display: flex;
-
-        align-items: center;
-
-        justify-content: center;
-
     }
 
-   
+    /* 2. HIDE THE WEBSITE UI */
+    .login-overlay, 
+    .sidebar, 
+    .content, 
+    .header-tools, 
+    .modal-overlay,
+    .billing-wrapper {
+        display: none !important;
+    }
 
-    body.printing-labels .label-hidden * { visibility: visible; }
+    /* =========================================================
+       MODE A: INVOICE / RECEIPT
+       (Restricted to 72mm width for SAFE 3-Inch Printing)
+    ========================================================= */
+    .receipt-hidden {
+        display: block !important;
+        position: relative;
+        left: 0;
+        top: 0;
+        width: 72mm; /* SAFE WIDTH for 3-inch roll (76mm - margins) */
+        margin: 0; 
+        padding: 2mm 1mm; /* Minimal padding to use max space */
+        color: black;
+        font-family: 'Courier Prime', monospace;
+        background: white;
+    }
 
+    /* Hide Stickers in Invoice Mode */
+    .label-hidden { display: none !important; }
 
+    /* Invoice Layout */
+    .r-container { width: 100%; }
+    .r-header { text-align: center; margin-bottom: 5px; }
+    .r-header h2 { font-size: 16px; font-weight: 800; margin: 0; text-transform: uppercase; }
+    .r-header p { font-size: 11px; margin: 1px 0; }
+    
+    .dashed-line { border-top: 1px dashed #000; margin: 5px 0; }
+    
+    .r-meta, .r-customer { 
+        display: flex; 
+        justify-content: space-between; 
+        font-size: 10px; /* Slightly smaller for 3-inch fit */
+        font-weight: 600; 
+        margin-bottom: 2px;
+    }
+    
+    /* Table Alignment & COLUMN WIDTH FIXES */
+    .r-table { width: 100%; border-collapse: collapse; margin-top: 5px; font-size: 10px; }
+    .r-table th { border-bottom: 1px dashed #000; padding: 2px 0; font-weight: bold; }
+    .r-table td { padding: 4px 0; vertical-align: top; }
+    
+    /* FORCE COLUMN WIDTHS TO PREVENT JUMPING */
+    .r-table th:nth-child(1), .r-table td:nth-child(1) { width: 40%; text-align: left; }   /* ITEM */
+    .r-table th:nth-child(2), .r-table td:nth-child(2) { width: 10%; text-align: center; } /* SIZE */
+    .r-table th:nth-child(3), .r-table td:nth-child(3) { width: 10%; text-align: center; } /* QTY */
+    .r-table th:nth-child(4), .r-table td:nth-child(4) { width: 20%; text-align: right; }  /* PRICE */
+    .r-table th:nth-child(5), .r-table td:nth-child(5) { width: 20%; text-align: right; }  /* AMT */
+
+    /* Totals Section */
+    .r-total { display: flex; justify-content: space-between; font-size: 14px; font-weight: 800; margin-top: 8px; border-top: 1px dashed #000; padding-top: 5px; }
+    
+    .r-footer { text-align: center; font-size: 10px; margin-top: 10px; font-weight: 600; }
+    
+    .barcode-container { margin-top: 10px; display: flex; justify-content: center; }
+    .barcode-container svg { width: 90% !important; height: 35px; }
+
+    /* =========================================================
+       MODE B: STICKER (50x25mm)
+    ========================================================= */
+    body.printing-labels { width: 50mm; }
+    body.printing-labels .receipt-hidden { display: none !important; }
+    body.printing-labels .label-hidden { display: flex !important; flex-direction: column; align-items: center; width: 100%; }
 
     .sticker {
-
-        width: 48mm;  
-
-        height: 24mm; /* Slightly smaller than 25mm to prevent page break */
-
+        width: 50mm;
+        height: 25mm;
         display: flex;
-
         flex-direction: column;
-
-        align-items: center;      
-
-        justify-content: center;  
-
+        align-items: center;
+        justify-content: center;
         text-align: center;
-
+        page-break-inside: avoid;
         overflow: hidden;
-
-        box-sizing: border-box;
-
-        /* page-break-after: always; <--- REMOVED THIS to stop extra blank pages on single print */
-
     }
 
-   
-
-    /* BIGGER BOLD TEXT */
-
-    .sticker h4 {
-
-        font-size: 11px; /* Increased */
-
-        font-weight: 900;
-
-        text-transform: uppercase;
-
-        margin: 0;
-
-        line-height: 1;
-
-        color: black;
-
-    }
-
-   
-
-    .sticker p {
-
-        font-size: 11px; /* Increased */
-
-        font-weight: 800;
-
-        margin: 1px 0;
-
-        line-height: 1;
-
-        color: black;
-
-    }
-
-   
-
-    /* MAXIMIZE BARCODE SIZE */
-
-    .sticker svg {
-
-        display: block;
-
-        width: 95% !important;  
-
-        height: 40px !important; /* Taller Barcode */
-
-        margin: 1px auto;
-
-    }
-
+    .sticker h4 { font-size: 10px; font-weight: 900; margin: 0; line-height: 1; text-transform: uppercase; }
+    .sticker p { font-size: 10px; font-weight: 800; margin: 2px 0; line-height: 1; }
+    .sticker small { font-size: 9px; }
+    .sticker svg { width: 90% !important; height: 35px !important; margin: 0 auto; display: block; }
 }
-/* === PROPER PRINT LAYOUT CSS (UNCHANGED) === */
-/* @media print {
-    @page { size: A4; margin: 0; }
-    body * { visibility: hidden; }
-    .receipt-hidden { display: block; position: absolute; left: 0; top: 0; width: 78mm; padding: 5px; color: black; font-family: 'Courier Prime', monospace; }
-    .receipt-hidden * { visibility: visible; }
-    .r-container { width: 100%; }
-    .r-header { text-align: center; } .r-header h2 { font-size: 16px; margin: 0; } .r-header p { font-size: 12px; margin: 0; }
-    .dashed-line { border-top: 1px dashed #000; margin: 5px 0; }
-    .r-meta, .r-customer { font-size: 12px; margin: 5px 0; }
-    .r-meta { display: flex; justify-content: space-between; }
-    .r-customer p { margin: 2px 0; font-weight: bold; }
-    .r-table { width: 100%; font-size: 12px; } .r-table th { text-align: left; } .r-table .text-right { text-align: right; }
-    .r-total { display: flex; justify-content: space-between; font-size: 16px; font-weight: bold; }
-    .r-footer { text-align: center; font-size: 12px; margin-top: 10px; }
-    
-    body.printing-labels .receipt-hidden { display: none; }
-    body.printing-labels .label-hidden { display: flex; justify-content: center; align-items: center; position: fixed; left: 0; top: 0; width: 100vw; height: 100vh; visibility: visible; background: white; }
-    body.printing-labels .label-hidden * { visibility: visible; }
-    .a4-page { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(8, 1fr); width: 210mm; height: 296mm; padding: 10mm; gap: 2mm; box-sizing: border-box; }
-    .sticker { border: 1px solid #000; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 2px; overflow: hidden; }
-    .sticker h4 { margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
-    .sticker p { margin: 2px 0; font-size: 11px; font-weight: bold; }
-    .sticker small { font-size: 9px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
-    .sticker svg { display: block; width: 90%; height: 40px; margin: 2px auto; }
-} */
