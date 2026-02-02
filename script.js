@@ -71,7 +71,7 @@ function handleLogin(event) {
     const email = document.getElementById('loginEmail').value;
     const pass = document.getElementById('loginPass').value;
     const errorMsg = document.getElementById('loginError');
-    if (email === "admin@gmail.com" && pass === "admin@123") {
+    if (email === "samarpan@gmail.com" && pass === "samarpan") {
         document.getElementById('loginSection').style.display = 'none';
         if(barcodeInput) barcodeInput.focus();
     } else {
