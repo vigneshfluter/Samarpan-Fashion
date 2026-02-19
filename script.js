@@ -48,9 +48,7 @@ function setupFirebaseListeners() {
     db.ref('sales').on('value', (snapshot) => {
         const data = snapshot.val();
         salesHistory = data ? Object.values(data) : [];
-        const todayStr = new Date().toLocaleDateString('en-GB');
-        const cleanHistory = salesHistory.filter(s => s.date === todayStr);
-        salesHistory = cleanHistory; 
+        // FIX: Removed the overwrite bug that deleted old sales history
         renderHistory();
         calculateDailyStats();
     });
@@ -92,8 +90,13 @@ function showSection(id) {
 
 /* --- CALCULATIONS --- */
 function calculateDailyStats() {
-    const totalRevenue = salesHistory.reduce((sum, sale) => sum + sale.total, 0);
-    const totalItems = salesHistory.reduce((sum, sale) => sum + sale.items, 0);
+    // FIX: Filter today's sales here so we don't delete history
+    const todayStr = new Date().toLocaleDateString('en-GB');
+    const todaysSales = salesHistory.filter(s => s.date === todayStr);
+    
+    const totalRevenue = todaysSales.reduce((sum, sale) => sum + sale.total, 0);
+    const totalItems = todaysSales.reduce((sum, sale) => sum + sale.items, 0);
+    
     document.getElementById('dailyTotalDisplay').innerText = `₹${totalRevenue.toFixed(2)}`;
     document.getElementById('dailyItemsDisplay').innerText = totalItems;
 }
@@ -168,8 +171,7 @@ function renderInventory() {
     tbody.innerHTML = '';
     const term = document.getElementById('inventorySearch').value.toLowerCase();
     
-    // === FIX: REVERSE THE LIST TO SHOW NEWEST FIRST ===
-    // We create a copy using [...products] and then reverse it
+    // === REVERSE THE LIST TO SHOW NEWEST FIRST ===
     const reversedProducts = [...products].reverse();
 
     const filtered = reversedProducts.filter(p => p.name.toLowerCase().includes(term) || p.barcode.includes(term) || (p.size && p.size.toLowerCase().includes(term)));
@@ -244,7 +246,7 @@ function changeQty(i, d) { cart[i].qty += d; if(cart[i].qty <= 0) cart.splice(i,
 function removeFromCart(i) { cart.splice(i, 1); renderCart(); }
 function clearCart() { cart = []; renderCart(); }
 
-/* --- NEW: DISCOUNT & TOTALS LOGIC --- */
+/* --- DISCOUNT & TOTALS LOGIC --- */
 function setDiscount(val) {
     if(val === 'custom') {
         let input = prompt("Enter Discount Percentage (0-100):");
@@ -290,6 +292,9 @@ function holdBill() {
     document.getElementById('custName').value = '';
     document.getElementById('custMobile').value = '';
     alert("Bill Parked Successfully!");
+    
+    // FIX: Refocus input for fast scanning
+    if(barcodeInput) barcodeInput.focus();
 }
 
 function updateHeldCount() {
@@ -394,6 +399,8 @@ function processSale(type) {
         calculateTotals();
         document.getElementById('custName').value = '';
         document.getElementById('custMobile').value = '';
+        // FIX: Refocus input for fast scanning
+        if(barcodeInput) barcodeInput.focus();
     }, 300);
 }
 
@@ -424,20 +431,25 @@ function printLabels(id) {
                 try {
                     JsBarcode(svgElement, p.barcode, { 
                         format: "CODE128",
-                        width: 2.0,      
-                        height: 28,      
+                        width: 1.5,      // FIX: Thinner bars to fit 50mm
+                        height: 30,      // FIX: Slightly taller
                         fontSize: 12,    
                         displayValue: true,
                         margin: 0,
-                        textMargin: 0
+                        textMargin: 2    // FIX: Gap below barcode
                     });
                 } catch(e) { console.error(e); }
             }
         }
+        
+        // FIX: Safer print resetting
         setTimeout(() => {
             window.print(); 
-            setTimeout(() => document.body.classList.remove('printing-labels'), 1000); 
         }, 500);
+        window.onafterprint = function() {
+            document.body.classList.remove('printing-labels');
+        };
+        
     }, 100);
 }
 

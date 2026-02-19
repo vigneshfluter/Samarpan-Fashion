@@ -118,7 +118,7 @@ header { display: flex; justify-content: space-between; align-items: center; mar
 .form-group input { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: var(--radius); }
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
 
-/* === NEW: GRID 3 FOR SIZE, PRICE, STOCK === */
+/* === GRID 3 FOR SIZE, PRICE, STOCK === */
 .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; }
 
 .input-group { display: flex; gap: 8px; }
@@ -272,7 +272,11 @@ header { display: flex; justify-content: space-between; align-items: center; mar
     /* =========================================================
        MODE B: STICKER (50x25mm)
     ========================================================= */
-    body.printing-labels { width: 50mm; }
+    body.printing-labels { width: 50mm; margin: 0; padding: 0; }
+    
+    /* Force the printer to recognize the exact 50x25mm label size */
+    body.printing-labels @page { size: 50mm 25mm; margin: 0; }
+    
     body.printing-labels .receipt-hidden { display: none !important; }
     body.printing-labels .label-hidden { display: flex !important; flex-direction: column; align-items: center; width: 100%; }
 
@@ -286,10 +290,20 @@ header { display: flex; justify-content: space-between; align-items: center; mar
         text-align: center;
         page-break-inside: avoid;
         overflow: hidden;
+        padding: 1mm; /* Tiny padding so edges don't cut off */
+        box-sizing: border-box;
     }
 
-    .sticker h4 { font-size: 10px; font-weight: 900; margin: 0; line-height: 1; text-transform: uppercase; }
-    .sticker p { font-size: 10px; font-weight: 800; margin: 2px 0; line-height: 1; }
-    .sticker small { font-size: 9px; }
-    .sticker svg { width: 90% !important; height: 35px !important; margin: 0 auto; display: block; }
+    .sticker h4 { font-size: 11px; font-weight: 900; margin: 0 0 2px 0; line-height: 1; text-transform: uppercase; }
+    .sticker p { font-size: 10px; font-weight: 800; margin: 2px 0 0 0; line-height: 1; }
+    .sticker small { font-size: 15px; margin-top: 1px; }
+    
+    /* FIX: Stop stretching the barcode! Let it scale proportionally */
+    .sticker svg { 
+        max-width: 100% !important; 
+        height: auto !important; 
+        max-height: 10mm !important; /* Limits height so text fits below */
+        margin: 0 auto; 
+        display: block; 
+    }
 }
