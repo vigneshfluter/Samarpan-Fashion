@@ -9,33 +9,39 @@ const firebaseConfig = {
   appId: "1:783942684395:web:0eca1364f5e016c03438ae"
 };
 
-// Initialize Firebase
+// Initialize Firebase using Compat mode to match your original coding style
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
+const auth = firebase.auth();
 
 /* --- STATE & DOM --- */
 let products = [];
 let salesHistory = [];
 let heldBills = [];
 let cart = [];
-let currentDiscount = 0; // Track discount percentage
+let currentDiscount = 0; 
 
 const barcodeInput = document.getElementById('barcodeInput');
 const cartTableBody = document.getElementById('cartTableBody');
 
-/* --- INIT --- */
+/* --- INIT & AUTH CHECK --- */
 document.addEventListener('DOMContentLoaded', () => {
-    setupFirebaseListeners();
+    // Check if user is logged in via Firebase Auth
+    auth.onAuthStateChanged((user) => {
+        if (user) {
+            document.getElementById('loginSection').style.display = 'none';
+            setupFirebaseListeners();
+            if(barcodeInput) barcodeInput.focus();
+        } else {
+            document.getElementById('loginSection').style.display = 'flex';
+        }
+    });
+
     const todayFancy = new Date().toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
     const dateEl = document.getElementById('currentDate');
     if(dateEl) dateEl.innerText = todayFancy;
     const loginDateEl = document.getElementById('loginDateDisplay');
     if(loginDateEl) loginDateEl.innerText = todayFancy;
-    renderInventory();
-    renderHistory();
-    calculateDailyStats();
-    updateHeldCount();
-    if(barcodeInput) barcodeInput.focus();
 });
 
 /* --- FIREBASE LOGIC --- */
@@ -48,7 +54,6 @@ function setupFirebaseListeners() {
     db.ref('sales').on('value', (snapshot) => {
         const data = snapshot.val();
         salesHistory = data ? Object.values(data) : [];
-        // FIX: Removed the overwrite bug that deleted old sales history
         renderHistory();
         calculateDailyStats();
     });
@@ -69,12 +74,16 @@ function handleLogin(event) {
     const email = document.getElementById('loginEmail').value;
     const pass = document.getElementById('loginPass').value;
     const errorMsg = document.getElementById('loginError');
-    if (email === "samarpan@gmail.com" && pass === "samarpan") {
-        document.getElementById('loginSection').style.display = 'none';
-        if(barcodeInput) barcodeInput.focus();
-    } else {
-        errorMsg.style.display = 'block';
-    }
+
+    // Real Firebase Auth Sign In
+    auth.signInWithEmailAndPassword(email, pass)
+        .then(() => {
+            errorMsg.style.display = 'none';
+        })
+        .catch((error) => {
+            errorMsg.style.display = 'block';
+            console.error("Login Error:", error.message);
+        });
 }
 
 /* --- NAVIGATION --- */
@@ -82,23 +91,26 @@ function showSection(id) {
     document.querySelectorAll('.section').forEach(s => s.classList.remove('active-section'));
     document.getElementById(id).classList.add('active-section');
     document.querySelectorAll('.sidebar li').forEach(l => l.classList.remove('active'));
-    const navIndex = id === 'billing' ? 0 : id === 'inventory' ? 1 : 2;
+    
+    // Correct index matching for your sidebar
     const navItems = document.querySelectorAll('.sidebar li');
-    if(navItems[navIndex]) navItems[navIndex].classList.add('active');
+    if(id === 'billing' && navItems[0]) navItems[0].classList.add('active');
+    if(id === 'inventory' && navItems[1]) navItems[1].classList.add('active');
+    if(id === 'reports' && navItems[2]) navItems[2].classList.add('active');
+
     if(id === 'billing' && barcodeInput) setTimeout(() => barcodeInput.focus(), 100);
 }
 
 /* --- CALCULATIONS --- */
 function calculateDailyStats() {
-    // FIX: Filter today's sales here so we don't delete history
     const todayStr = new Date().toLocaleDateString('en-GB');
     const todaysSales = salesHistory.filter(s => s.date === todayStr);
     
     const totalRevenue = todaysSales.reduce((sum, sale) => sum + sale.total, 0);
     const totalItems = todaysSales.reduce((sum, sale) => sum + sale.items, 0);
     
-    document.getElementById('dailyTotalDisplay').innerText = `₹${totalRevenue.toFixed(2)}`;
-    document.getElementById('dailyItemsDisplay').innerText = totalItems;
+    if(document.getElementById('dailyTotalDisplay')) document.getElementById('dailyTotalDisplay').innerText = `₹${totalRevenue.toFixed(2)}`;
+    if(document.getElementById('dailyItemsDisplay')) document.getElementById('dailyItemsDisplay').innerText = totalItems;
 }
 
 /* --- INVENTORY FUNCTIONS --- */
@@ -127,6 +139,7 @@ if(addForm) {
         
         let barcode = document.getElementById('prodBarcode').value;
         if(!barcode) barcode = generateUniqueBarcode();
+        
         if(id) {
             const index = products.findIndex(p => p.id == id);
             if(index !== -1) products[index] = { id: parseInt(id), name, size, price, stock, barcode };
@@ -144,8 +157,9 @@ function resetForm() {
     document.getElementById('editId').value = '';
     document.getElementById('prodStock').value = ''; 
     document.getElementById('formTitle').innerText = 'Add New Item';
-    document.getElementById('saveBtn').innerText = 'Save Product';
-    document.getElementById('saveBtn').classList.replace('btn-warning', 'btn-success');
+    const saveBtn = document.getElementById('saveBtn');
+    saveBtn.innerText = 'Save Product';
+    saveBtn.className = 'btn btn-success full-width';
     document.getElementById('cancelEditBtn').style.display = 'none';
 }
 
@@ -161,7 +175,7 @@ function editProduct(id) {
     document.getElementById('formTitle').innerText = 'Edit Item';
     const btn = document.getElementById('saveBtn');
     btn.innerText = 'Update Product';
-    btn.classList.replace('btn-success', 'btn-warning');
+    btn.className = 'btn btn-warning full-width';
     document.getElementById('cancelEditBtn').style.display = 'inline-block';
 }
 
@@ -170,11 +184,7 @@ function renderInventory() {
     if(!tbody) return;
     tbody.innerHTML = '';
     const term = document.getElementById('inventorySearch').value.toLowerCase();
-    
-    // === REVERSE THE LIST TO SHOW NEWEST FIRST ===
-    const reversedProducts = [...products].reverse();
-
-    const filtered = reversedProducts.filter(p => p.name.toLowerCase().includes(term) || p.barcode.includes(term) || (p.size && p.size.toLowerCase().includes(term)));
+    const filtered = [...products].reverse().filter(p => p.name.toLowerCase().includes(term) || p.barcode.includes(term) || (p.size && p.size.toLowerCase().includes(term)));
     
     filtered.forEach(p => {
         tbody.innerHTML += `
@@ -192,6 +202,7 @@ function renderInventory() {
             </tr>`;
     });
 }
+
 function deleteProduct(id) { 
     if(confirm('Delete this product?')) { 
         products = products.filter(p => p.id !== id); 
@@ -227,9 +238,9 @@ function renderCart() {
         cart.forEach((item, i) => {
             cartTableBody.innerHTML += `
                 <tr>
-                    <td><input value="${item.name}" onchange="updateItem(${i}, 'name', this.value)"></td>
+                    <td><input value="${item.name}" onchange="updateItem(${i}, 'name', this.value)" style="width:100%; border:none; background:transparent;"></td>
                     <td>${item.size || '-'}</td>
-                    <td><input type="number" value="${item.price}" onchange="updateItem(${i}, 'price', this.value)"></td>
+                    <td><input type="number" value="${item.price}" onchange="updateItem(${i}, 'price', this.value)" style="width:70px; border:none; background:transparent;"></td>
                     <td>
                         <div class="qty-group"><button class="qty-btn" onclick="changeQty(${i}, -1)">-</button><span>${item.qty}</span><button class="qty-btn" onclick="changeQty(${i}, 1)">+</button></div>
                     </td>
@@ -246,13 +257,11 @@ function changeQty(i, d) { cart[i].qty += d; if(cart[i].qty <= 0) cart.splice(i,
 function removeFromCart(i) { cart.splice(i, 1); renderCart(); }
 function clearCart() { cart = []; renderCart(); }
 
-/* --- DISCOUNT & TOTALS LOGIC --- */
 function setDiscount(val) {
     if(val === 'custom') {
         let input = prompt("Enter Discount Percentage (0-100):");
         if(input === null) return; 
-        val = parseFloat(input);
-        if(isNaN(val) || val < 0) val = 0;
+        val = parseFloat(input) || 0;
     }
     currentDiscount = parseFloat(val);
     calculateTotals();
@@ -288,12 +297,9 @@ function holdBill() {
     clearCart();
     currentDiscount = 0;
     calculateTotals();
-    
     document.getElementById('custName').value = '';
     document.getElementById('custMobile').value = '';
     alert("Bill Parked Successfully!");
-    
-    // FIX: Refocus input for fast scanning
     if(barcodeInput) barcodeInput.focus();
 }
 
@@ -328,11 +334,9 @@ function openHeldModal() {
 
 function closeHeldModal() { document.getElementById('heldBillsModal').style.display = 'none'; }
 function restoreBill(index) {
-    if(cart.length > 0) { if(!confirm("Current cart will be cleared. Continue?")) return; }
     const bill = heldBills[index];
     cart = bill.cartData;
     currentDiscount = bill.discountPct || 0; 
-    
     document.getElementById('custName').value = bill.custData.name;
     document.getElementById('custMobile').value = bill.custData.mobile;
     heldBills.splice(index, 1);
@@ -375,6 +379,7 @@ function processSale(type) {
     });
     saveSales();
     
+    // UI Update for Receipt
     document.getElementById('r-id').innerText = `SR No. ${serialNo}`;
     document.getElementById('r-date').innerText = dateStr;
     document.getElementById('r-cust-name').innerText = cName ? `Customer: ${cName}` : '';
@@ -399,7 +404,6 @@ function processSale(type) {
         calculateTotals();
         document.getElementById('custName').value = '';
         document.getElementById('custMobile').value = '';
-        // FIX: Refocus input for fast scanning
         if(barcodeInput) barcodeInput.focus();
     }, 300);
 }
@@ -407,50 +411,22 @@ function processSale(type) {
 function printLabels(id) {
     const p = products.find(x => x.id === id);
     if(!p) return;
-
-    let qty = 1; 
     document.body.classList.add('printing-labels');
     const sheet = document.getElementById('label-sheet');
-    sheet.innerHTML = '';
+    sheet.innerHTML = `
+        <div class="sticker">
+            <h4>Samarpan Fashion</h4>
+            <svg id="labelBarcode"></svg>
+            <p>Size: ${p.size || 'Free'} | ₹${p.price}</p>
+            <small>${p.name}</small>
+        </div>`;
     
-    for(let i=0; i<qty; i++) {
-        const svgId = `b-${id}-${i}`;
-        const breakStyle = (i < qty - 1) ? 'style="page-break-after: always;"' : '';
-        sheet.innerHTML += `
-            <div class="sticker" ${breakStyle}>
-                <h4>Samarpan Fashion</h4>
-                <svg id="${svgId}"></svg>
-                <p>Size: ${p.size || 'Free'} | ₹${p.price}</p>
-                <small>${p.name}</small> </div>`;
-    }
-
+    JsBarcode("#labelBarcode", p.barcode, { width: 1.5, height: 30, fontSize: 12, displayValue: true, margin: 0 });
+    
     setTimeout(() => {
-        for(let i=0; i<qty; i++) {
-            const svgElement = document.getElementById(`b-${id}-${i}`);
-            if(svgElement) {
-                try {
-                    JsBarcode(svgElement, p.barcode, { 
-                        format: "CODE128",
-                        width: 1.5,      // FIX: Thinner bars to fit 50mm
-                        height: 30,      // FIX: Slightly taller
-                        fontSize: 12,    
-                        displayValue: true,
-                        margin: 0,
-                        textMargin: 2    // FIX: Gap below barcode
-                    });
-                } catch(e) { console.error(e); }
-            }
-        }
-        
-        // FIX: Safer print resetting
-        setTimeout(() => {
-            window.print(); 
-        }, 500);
-        window.onafterprint = function() {
-            document.body.classList.remove('printing-labels');
-        };
-        
-    }, 100);
+        window.print();
+        document.body.classList.remove('printing-labels');
+    }, 500);
 }
 
 function renderHistory() {
@@ -470,9 +446,9 @@ function renderHistory() {
             </tr>`; 
     });
 }
+
 function reprintBill(index) {
     const bill = salesHistory[index];
-    if(!bill.details) { alert("Details not available for this old bill."); return; }
     document.getElementById('r-id').innerText = bill.serial ? `SR No. ${bill.serial}` : bill.id;
     document.getElementById('r-date').innerText = bill.date;
     document.getElementById('r-cust-name').innerText = bill.customer ? `Customer: ${bill.customer}` : '';
@@ -481,15 +457,14 @@ function reprintBill(index) {
     body.innerHTML = '';
     bill.details.forEach(i => { body.innerHTML += `<tr><td class="text-left">${i.name}</td><td class="text-center">${i.size || ''}</td><td class="text-center">${i.qty}</td><td class="text-right">${i.price}</td><td class="text-right">${(i.price*i.qty).toFixed(2)}</td></tr>`; });
     
-    const rSub = document.getElementById('r-subtotal');
-    const rDisc = document.getElementById('r-discount');
-    if(rSub) rSub.innerText = '₹' + (bill.subTotal || bill.total).toFixed(2);
-    if(rDisc) rDisc.innerText = '₹' + (bill.discount || 0).toFixed(2);
+    if(document.getElementById('r-subtotal')) document.getElementById('r-subtotal').innerText = '₹' + (bill.subTotal || bill.total).toFixed(2);
+    if(document.getElementById('r-discount')) document.getElementById('r-discount').innerText = '₹' + (bill.discount || 0).toFixed(2);
     document.getElementById('r-total').innerText = '₹' + bill.total.toFixed(2);
     
     try { JsBarcode("#r-barcode", bill.id, { format: "CODE128", displayValue: true, height: 40, fontSize: 14 }); } catch(e) {}
     setTimeout(() => window.print(), 300);
 }
+
 function backupData() { const a = document.createElement('a'); a.href = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ products, sales: salesHistory })); a.download = "Samarpan_Backup.json"; a.click(); }
 function restoreData(input) { 
     const r = new FileReader(); 
@@ -498,7 +473,7 @@ function restoreData(input) {
         products = d.products || [];
         salesHistory = d.sales || [];
         saveData(); saveSales(); 
-        alert("Data Restored & Synced to Cloud!");
+        alert("Data Restored!");
     }; 
     r.readAsText(input.files[0]); 
 }
@@ -506,91 +481,37 @@ function downloadSample() {
     const csvContent = "Product Name,Size,Price,Stock,Barcode\nSample Shirt,L,599,100,";
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
-    link.setAttribute("href", url);
-    link.setAttribute("download", "inventory_template.csv");
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
+    link.href = URL.createObjectURL(blob);
+    link.download = "inventory_template.csv";
     link.click();
-    document.body.removeChild(link);
 }
 function importCSV(input) { 
-    const file = input.files[0];
-    if(!file) return;
     const reader = new FileReader();
     reader.onload = function(e) {
-        const text = e.target.result;
-        const rows = text.split('\n').slice(1); 
-        let addedCount = 0;
+        const rows = e.target.result.split('\n').slice(1); 
         rows.forEach(row => {
             const cols = row.split(',');
             if(cols.length >= 3) {
-                const name = cols[0].trim();
-                const size = cols[1].trim();
-                const price = parseFloat(cols[2]);
-                const stock = parseInt(cols[3]) || 0; 
-                
-                const isDuplicate = products.some(p => p.name.toLowerCase() === name.toLowerCase() && p.price === price);
-                if (!isDuplicate && name && !isNaN(price)) {
-                    let barcode = cols[4] ? cols[4].trim() : '';
-                    if(!barcode || products.some(p => p.barcode === barcode)) barcode = generateUniqueBarcode(); 
-                    products.push({ id: Date.now() + Math.random(), name, size, price, stock, barcode }); 
-                    addedCount++;
-                }
+                products.push({ id: Date.now() + Math.random(), name: cols[0], size: cols[1], price: parseFloat(cols[2]), stock: parseInt(cols[3]) || 0, barcode: cols[4] || generateUniqueBarcode() });
             }
         });
-        saveData(); 
-        alert(`Imported ${addedCount} products!`);
-        input.value = ''; 
+        saveData(); alert("Imported!");
     };
-    reader.readAsText(file);
+    reader.readAsText(input.files[0]);
 }
-
 function exportInventory() {
-    if (!products || products.length === 0) {
-        alert("No products found to export!");
-        return;
-    }
-
-    let csvContent = "Product Name,Size,Price,Barcode,Stock\n";
-
-    products.forEach(p => {
-        let name = p.name ? `"${p.name.replace(/"/g, '""')}"` : "";
-        let size = p.size || "";
-        let price = p.price || 0;
-        let barcode = p.barcode ? `"${p.barcode}"` : ""; 
-        let stock = p.stock || 0;
-
-        csvContent += `${name},${size},${price},${barcode},${stock}\n`;
-    });
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
+    let csv = "Name,Size,Price,Barcode,Stock\n";
+    products.forEach(p => csv += `${p.name},${p.size},${p.price},${p.barcode},${p.stock}\n`);
     const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", "Samarpan_Product_List.csv");
-    document.body.appendChild(link);
+    link.href = 'data:text/csv;charset=utf-8,' + encodeURI(csv);
+    link.download = 'inventory.csv';
     link.click();
-    document.body.removeChild(link);
 }
-
 function exportReport() { 
-    if (!salesHistory || salesHistory.length === 0) {
-        alert("No sales history to export!");
-        return;
-    }
-    
-    let csvContent = "Bill ID,Date,Customer,Mobile,Items,Total\n";
-    salesHistory.forEach(s => {
-        const id = s.serial ? `SR-${s.serial}` : s.id;
-        csvContent += `${id},${s.date},${s.customer || ''},${s.mobile || ''},${s.items},${s.total}\n`;
-    });
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    let csv = "ID,Date,Customer,Total\n";
+    salesHistory.forEach(s => csv += `${s.id},${s.date},${s.customer},${s.total}\n`);
     const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = "Sales_Report.csv";
-    document.body.appendChild(link);
+    link.href = 'data:text/csv;charset=utf-8,' + encodeURI(csv);
+    link.download = 'sales_report.csv';
     link.click();
-    document.body.removeChild(link);
 }
